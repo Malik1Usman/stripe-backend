@@ -1,22 +1,14 @@
 {
-  "name": "stripe-payment",
+  "name": "stripe-backend",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "engines": {
-    "node": "20.x"
+    "start": "node server.js"
   },
   "dependencies": {
-    "express": "^5.1.0",
-    "stripe": "^18.3.0",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.0",
-    "cors": "^2.8.5"
+    "express": "^5.1.0",
+    "stripe": "^18.3.0"
   }
-
 }
