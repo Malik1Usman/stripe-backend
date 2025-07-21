@@ -11,5 +11,8 @@
     "express": "^5.1.0",
     "firebase-admin": "^13.4.0",
     "stripe": "^18.3.0"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^8.0.0"
   }
 }
