@@ -90,7 +90,7 @@ app.post("/refund-booking", async (req, res) => {
 
   await stripe.refunds.create({
     payment_intent: paymentIntentId,
-    amount: amount,
+   
   });
 
   await bookingRef.update({
