@@ -51,7 +51,7 @@ app.post("/refund-booking", async (req, res) => {
     }
 
     const booking = bookingSnap.data();
-    const createdAt = booking.timestamp.toDate();
+    const createdAt = booking.users.timestamp.toDate();
     const now = new Date();
     const hoursPassed = (now - createdAt) / (1000 * 60 * 60);
     if (hoursPassed > 24) {
