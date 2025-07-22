@@ -76,25 +76,29 @@ app.post("/refund-booking", async (req, res) => {
 
     let paymentIntentId, amount, persons = 1;
 
-    if (source === "hotel") {
-      if (booking.userId !== userId) {
-        return res.status(403).json({ success: false, message: "User mismatch" });
-      }
+   if (source === "hotel") {
+  if (booking.userId !== userId) {
+    return res.status(403).json({ success: false, message: "User mismatch" });
+  }
 
-      paymentIntentId = booking.stripeCustomerId;
-      amount = booking.totalPrice;
+  if (!booking.stripeCustomerId) {
+    return res.status(400).json({ success: false, message: "Missing stripeCustomerId." });
+  }
 
-      await stripe.refunds.create({
-        payment_intent: paymentIntentId,
-        amount: amount,
-      });
+  paymentIntentId = booking.stripeCustomerId.split("_secret_")[0];  // extract PaymentIntent ID
+  amount = booking.subtotal; // ✅ your correct field
 
-      await bookingRef.update({
-        status: "cancelled",
-        isRefunded: true
-      });
+  await stripe.refunds.create({
+    payment_intent: paymentIntentId,
+    amount: amount,
+  });
 
-    } else if (source === "tour") {
+  await bookingRef.update({
+    status: "cancelled",
+    isRefunded: true
+  });
+}
+else if (source === "tour") {
       const userEntry = booking.users.find(user => user.userId === userId);
       if (!userEntry) {
         return res.status(404).json({ success: false, message: "User not found in group" });
