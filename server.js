@@ -85,7 +85,8 @@ app.post("/refund-booking", async (req, res) => {
         return res.status(404).json({ success: false, message: "User not found in group" });
       }
 
-      paymentIntentId = userEntry.stripeCustomerId;
+     paymentIntentId = userEntry.stripeCustomerId.split('_secret')[0];
+
       persons = userEntry.persons || 1;
 
       await stripe.refunds.create({
