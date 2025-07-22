@@ -85,7 +85,11 @@ app.post("/refund-booking", async (req, res) => {
         return res.status(404).json({ success: false, message: "User not found in group" });
       }
 
-     paymentIntentId = userEntry.stripeCustomerId.split('_secret')[0];
+if (!userEntry.stripeCustomerId) {
+  return res.status(400).json({ success: false, message: "Missing stripeCustomerId for user." });
+}
+
+paymentIntentId = userEntry.stripeCustomerId.split("_secret_")[0];
 
       persons = userEntry.persons || 1;
 
