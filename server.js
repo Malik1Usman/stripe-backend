@@ -5,26 +5,25 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const admin = require("firebase-admin");
 
 admin.initializeApp({
- 
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-     privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
   }),
-
-
 });
-const db = admin.firestore();
 
+const db = admin.firestore();
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-// 👇 Your existing endpoints
+// ✅ Basic Route
 app.get("/", (req, res) => {
   res.send("Stripe Backend is Running 🚀");
 });
 
+// ✅ Create Payment Intent
 app.post("/create-payment-intent", async (req, res) => {
   try {
     const { amount } = req.body;
@@ -38,7 +37,7 @@ app.post("/create-payment-intent", async (req, res) => {
   }
 });
 
-// 👇 🔥 ADD YOUR REFUND ENDPOINT HERE
+// ✅ Refund Endpoint
 app.post("/refund-booking", async (req, res) => {
   const { bookingId, userId } = req.body;
 
@@ -74,31 +73,33 @@ app.post("/refund-booking", async (req, res) => {
       return res.status(403).json({ success: false, message: "Refund not allowed after 24 hours." });
     }
 
-    let paymentIntentId, amount, persons = 1;
+    let paymentIntentId, persons = 1;
 
-   if (source === "hotel") {
-  if (booking.userId !== userId) {
-    return res.status(403).json({ success: false, message: "User mismatch" });
-  }
+    if (source === "hotel") {
+      if (booking.userId !== userId) {
+        return res.status(403).json({ success: false, message: "User mismatch" });
+      }
 
-  if (!booking.stripeCustomerId) {
-    return res.status(400).json({ success: false, message: "Missing stripeCustomerId." });
-  }
+      if (!booking.stripeCustomerId) {
+        return res.status(400).json({ success: false, message: "Missing stripeCustomerId." });
+      }
 
-  paymentIntentId = booking.stripeCustomerId.split("_secret_")[0];  // extract PaymentIntent ID
-  amount = booking.subtotal; // ✅ your correct field
+      paymentIntentId = booking.stripeCustomerId.split("_secret_")[0];
 
-  await stripe.refunds.create({
-    payment_intent: paymentIntentId,
-   
-  });
+      await stripe.refunds.create({
+        payment_intent: paymentIntentId,
+      });
 
-  await bookingRef.update({
-    status: "cancelled",
-    isRefunded: true
-  });
-}
-else if (source === "tour") {
+      await bookingRef.update({
+        status: "cancelled",
+        isRefunded: true
+      });
+
+      await db.collection("users").doc(userId)
+        .collection("bookings").doc(bookingId)
+        .update({ status: "cancelled" });
+
+    } else if (source === "tour") {
       const userEntry = booking.users.find(user => user.userId === userId);
       if (!userEntry) {
         return res.status(404).json({ success: false, message: "User not found in group" });
@@ -113,16 +114,26 @@ else if (source === "tour") {
 
       await stripe.refunds.create({
         payment_intent: paymentIntentId,
-        // amount: optional
       });
 
       const updatedUsers = booking.users.filter(user => user.userId !== userId);
       const updatedCount = booking.currentCount - persons;
 
-      await bookingRef.update({
+      const updateFields = {
         users: updatedUsers,
         currentCount: updatedCount
-      });
+      };
+
+      // Optional: Auto-cancel tour if all users leave
+      // if (updatedUsers.length === 0) {
+      //   updateFields.status = "cancelled";
+      // }
+
+      await bookingRef.update(updateFields);
+
+      await db.collection("users").doc(userId)
+        .collection("bookings").doc(bookingId)
+        .update({ status: "cancelled" });
     }
 
     await db.collection("refunds").add({
@@ -146,8 +157,7 @@ else if (source === "tour") {
   }
 });
 
-
-// 🔚 Server Start
+// ✅ Server Start
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
