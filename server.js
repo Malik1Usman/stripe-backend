@@ -51,14 +51,29 @@ app.post("/refund-booking", async (req, res) => {
     }
 
     const booking = bookingSnap.data();
-    const createdAt = booking.users.timestamp.toDate();
+    const source = booking.source || "tour";
+
+    let createdAt;
+
+    if (source === "hotel") {
+      if (!booking.timestamp) {
+        return res.status(400).json({ success: false, message: "Missing booking timestamp" });
+      }
+      createdAt = booking.timestamp.toDate();
+    } else {
+      const userEntry = booking.users.find(user => user.userId === userId);
+      if (!userEntry || !userEntry.timestamp) {
+        return res.status(404).json({ success: false, message: "User timestamp not found" });
+      }
+      createdAt = userEntry.timestamp.toDate();
+    }
+
     const now = new Date();
     const hoursPassed = (now - createdAt) / (1000 * 60 * 60);
     if (hoursPassed > 24) {
       return res.status(403).json({ success: false, message: "Refund not allowed after 24 hours." });
     }
 
-    const source = booking.source || "tour";
     let paymentIntentId, amount, persons = 1;
 
     if (source === "hotel") {
@@ -85,12 +100,11 @@ app.post("/refund-booking", async (req, res) => {
         return res.status(404).json({ success: false, message: "User not found in group" });
       }
 
-if (!userEntry.stripeCustomerId) {
-  return res.status(400).json({ success: false, message: "Missing stripeCustomerId for user." });
-}
+      if (!userEntry.stripeCustomerId) {
+        return res.status(400).json({ success: false, message: "Missing stripeCustomerId for user." });
+      }
 
-paymentIntentId = userEntry.stripeCustomerId.split("_secret_")[0];
-
+      paymentIntentId = userEntry.stripeCustomerId.split("_secret_")[0];
       persons = userEntry.persons || 1;
 
       await stripe.refunds.create({
