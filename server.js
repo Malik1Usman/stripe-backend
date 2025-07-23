@@ -159,7 +159,8 @@ try {
   console.log("Error fetching item title:", err.message);
 }
 
-await admin.messaging().sendToTopic(userId, {
+await admin.messaging().send({
+  topic: userId,
   notification: {
     title: "Booking Cancelled",
     body: `Your booking for ${title} has been cancelled.`,
@@ -186,7 +187,8 @@ await db.collection("users").doc(userId).collection("notifications").add({
 });
 
 
-await admin.messaging().sendToTopic(userId, {
+await admin.messaging().send({
+  topic: userId,
   notification: {
     title: "Refund Processed",
     body: `Refund for your ${title} booking has been successfully processed.`,
