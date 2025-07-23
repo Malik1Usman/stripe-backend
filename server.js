@@ -145,6 +145,72 @@ app.post("/refund-booking", async (req, res) => {
       status: "refunded",
       timestamp: admin.firestore.Timestamp.now()
     });
+    
+    // ya ha notification ka lya
+
+    const itemId = source === "tour" ? booking.tourId : booking.hotelId;
+let title = "your package";
+try {
+  const itemSnap = await db.collection(source === "tour" ? "tours" : "hotels").doc(itemId).get();
+  if (itemSnap.exists) {
+    title = itemSnap.data().title || title;
+  }
+} catch (err) {
+  console.log("Error fetching item title:", err.message);
+}
+
+await admin.messaging().sendToTopic(userId, {
+  notification: {
+    title: "Booking Cancelled",
+    body: `Your booking for ${title} has been cancelled.`,
+  },
+  data: {
+    type: "cancel",
+    itemId,
+    source,
+    bookingId,
+    title
+  }
+});
+
+await db.collection("users").doc(userId).collection("notifications").add({
+  userId,
+  title: "Booking Cancelled",
+  message: `Your booking for ${title} has been cancelled.`,
+  type: "cancel",
+  source,
+  itemId,
+  bookingId,
+  timestamp: admin.firestore.Timestamp.now(),
+  isRead: false
+});
+
+
+await admin.messaging().sendToTopic(userId, {
+  notification: {
+    title: "Refund Processed",
+    body: `Refund for your ${title} booking has been successfully processed.`,
+  },
+  data: {
+    type: "refund",
+    itemId,
+    source,
+    bookingId,
+    title
+  }
+});
+await db.collection("users").doc(userId).collection("notifications").add({
+  userId,
+  title: "Refund Processed",
+  message: `Refund for your ${title} booking has been successfully processed.`,
+  type: "refund",
+  source,
+  itemId,
+  bookingId,
+  timestamp: admin.firestore.Timestamp.now(),
+  isRead: false
+});
+
 
     return res.status(200).json({
       success: true,
